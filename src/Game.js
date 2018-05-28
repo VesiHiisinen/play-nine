@@ -13,14 +13,16 @@ export default class Game extends Component {
         return randomInt;
     }
 
-    state = {
+    static initialState = () => ({
         selectedNumbers: [],
         randomNumberOfStars: Game.randomNumber(),
         answerIsCorrect: null,
         usedNumbers: [],
         redraws: 5,
         doneStatus: null,
-    }
+    });
+
+    state = Game.initialState();
 
     selectNumber = (clickedNumber) => {
         if (this.state.selectedNumbers.indexOf(clickedNumber) >=0) {
@@ -56,7 +58,9 @@ export default class Game extends Component {
             selectedNumbers: [],
             answerIsCorrect: null,
             randomNumberOfStars: null,
-        }));
+        }), this.updateDoneStatus);
+        // TODO: refactor second setState call! It's asyncronous and won't 
+        // work necessary
         this.setState({
            randomNumberOfStars: Game.randomNumber(), 
         });
@@ -69,24 +73,50 @@ export default class Game extends Component {
                 answerIsCorrect: null,
                 selectedNumbers: [],
                 redraws: prevState.redraws = prevState.redraws-1,
-            }));
+            }), this.updateDoneStatus);
         }
     }
     possibleSolutions = ({randomNumberOfStars, usedNumbers}) => {
         const possibleNumbers = _range(1, 10).filter(number => 
         usedNumbers.indexOf(number) === -1
-    );
-    // Does the array of possible numbers have any combination of numbers that sum up to equal the value of stars?
-}
+        );
+        return Game.possibleCombinationsSum(possibleNumbers, randomNumberOfStars);
+    }
+
+    // Does the array of possible numbers have any combination 
+    // of numbers that sums up to equal the value of stars?
+    static possibleCombinationsSum = function(arr, n) {
+        if (arr.indexOf(n) >= 0) { return true; }
+        if (arr[0] > n) { return false; }
+        if (arr[arr.length - 1] > n) {
+          arr.pop();
+          return Game.possibleCombinationsSum(arr, n);
+        }
+        var listSize = arr.length, combinationsCount = (1 << listSize)
+        for (var i = 1; i < combinationsCount ; i++ ) {
+          var combinationSum = 0;
+          for (var j=0 ; j < listSize ; j++) {
+            if (i & (1 << j)) { combinationSum += arr[j]; }
+          }
+          if (n === combinationSum) { return true; }
+        }
+        return false;
+      };
+
     updateDoneStatus = () => {
         this.setState(prevState => {
             if (prevState.usedNumbers.length === 9) {
                 return { doneStatus: "YOU'WE WON THE GAME! NICE!"};
             }
             if (prevState.redraws === 0 && !this.possibleSolutions(prevState)) {
-                return { doneStatus: "IT'S GAME OVER MAN, GAME OVER!"};
+                return { doneStatus: "IT'S GAME OVER MAN, GAME OVER!"
+                };
             }
-        })
+        });
+    }
+
+    resetGame = ()  => {
+        this.setState(Game.initialState());
     }
 
     render() {
@@ -117,7 +147,9 @@ export default class Game extends Component {
                 </div>
                 <br />
                 {doneStatus ? 
-                <DoneFrame doneStatus={doneStatus} /> : //sneaky ternary statement here
+                <DoneFrame 
+                doneStatus={doneStatus}
+                resetGame={this.resetGame} /> : //Don't mis it, sneaky ternary here!
                 <Numbers 
                 selectNumber={this.selectNumber}
                 selectedNumbers={selectedNumbers}
